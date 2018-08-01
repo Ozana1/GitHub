@@ -1,0 +1,97 @@
+---
+title: "Eurostat"
+runtime: shiny
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
+
+To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
+
+## Inputs and Outputs
+
+You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
+
+```{r}
+library(ggplot2)
+library(shiny)
+
+install.packages("eurostat")
+install.packages("rvest")
+library(eurostat)
+library(rvest)
+library(devtools)
+install_github("ropengov/eurostat")
+install.packages("lubridate")
+library(lubridate)
+install.packages("dplyr")
+library(dplyr)
+
+lp <- get_eurostat("nama_10_lp_ulc")
+em <- get_eurostat("lfsa_ergan")  
+
+lp_pps <- subset(lp, geo %in% c("AT", "BE", "FI", "HR")
+& unit=='PPS'
+& na_item == 'D1_SAL_HW')
+names(lp_pps)[5]<-"LC"
+
+lp_pps1<-slice(lp_pps, 1:64)
+
+em_t <- subset(em, geo %in% c("AT", "BE", "FI", "HR")
+& unit=='PC'
+& sex == 'T'
+& age == 'Y15-64'
+& citizen == 'TOTAL')
+names(em_t)[7]<-"EMP"
+em_t1<-slice(em_t, 1:64)
+
+emp_lc <- data.frame(lp_pps1,em_t1)
+
+g <- ggplot(emp_lc, aes(x=EMP, y=LC, colour = geo))
+g <- g +  geom_point() +geom_smooth(method=lm)
+print(g)
+
+p <- ggplot(lp_pps, aes(x = time, y = LC, colour = geo))
+p <- p + geom_line()
+print(p)
+
+lp_eur <- subset(lp, geo %in% c("AT", "BE", "FI", "HR")
+& unit=='EUR'
+& na_item == 'D1_SAL_HW')
+
+p <- ggplot(lp_eur, aes(x = time, y = values, colour = geo))
+p <- p + geom_line()
+print(p)
+
+
+
+```
+
+## Embedded Application
+
+It's also possible to embed an entire Shiny application within an R Markdown document using the `shinyAppDir` function. This example embeds a Shiny application located in another directory:
+
+```{r tabsets, echo=FALSE}
+install.packages(shinyAppDir)
+library(shinyAppDir)
+
+shinyAppDir(
+  system.file("lp_eur", package = "shiny"),
+  options = list(
+    width = "100%", height = 550
+  )
+)
+```
+
+Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
+
+You can also use the `shinyApp` function to define an application inline rather then in an external directory.
+
+In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
+
+
+
